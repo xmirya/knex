@@ -15,6 +15,17 @@ import ColumnCompiler from './schema/columncompiler';
 import TableCompiler from './schema/tablecompiler';
 import SQLite3_DDL from './schema/ddl';
 
+// These are SQLite connection opening mode constants
+const SQLITE_OPEN_READWRITE = 2;
+const SQLITE_OPEN_CREATE = 4;
+const SQLITE_OPEN_FULLMUTEX = 0x10000;
+const SQLITE_OPEN_SHAREDCACHE = 0x20000;
+
+// node-sqlite3 uses the first three as the default value; SQLITE_OPEN_SHAREDCACHE is advised
+// for processes that utilize multiple connections, e.g. what Knex connection pool does
+const OPEN_MODE = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | //eslint-disable-line no-bitwise
+                  SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_SHAREDCACHE; //eslint-disable-line no-bitwise
+
 function Client_SQLite3(config) {
   Client.call(this, config)
   if (isUndefined(config.useNullAsDefault)) {
@@ -60,7 +71,7 @@ assign(Client_SQLite3.prototype, {
   // Get a raw connection from the database, returning a promise with the connection object.
   acquireRawConnection() {
     return new Promise((resolve, reject) => {
-      const db = new this.driver.Database(this.connectionSettings.filename, (err) => {
+      const db = new this.driver.Database(this.connectionSettings.filename, OPEN_MODE, (err) => {
         if (err) {
           return reject(err)
         }
