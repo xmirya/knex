@@ -194,7 +194,7 @@ assign(Runner.prototype, {
           .then((connection) => {
             if (cancelled) {
               this.client.releaseConnection(connection);
-              resolver(null)
+              return resolver(null)
             }
             resolver(connection)
           })
