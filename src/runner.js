@@ -209,7 +209,7 @@ assign(Runner.prototype, {
       })
     }).disposer(() => {
       // need to return promise or null from handler to prevent warning from bluebird
-      return this.client.releaseConnection(this.connection)
+      return this.connection ? this.client.releaseConnection(this.connection) : null
     })
   }
 
