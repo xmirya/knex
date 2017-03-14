@@ -30,6 +30,23 @@ describe("PostgreSQL SchemaBuilder", function() {
     expect(tableSql[0].sql).to.equal('alter table "users" add column "id" serial primary key, add column "email" varchar(255)');
   });
 
+  it('should alter columns with the alter flag', function() {
+    tableSql = client.schemaBuilder().table('users', function() {
+      this.string('foo').notNullable().default('foo').alter();
+      this.integer('bar').alter();
+    }).toSQL();
+
+    equal(8, tableSql.length);
+    expect(tableSql[0].sql).to.equal('alter table "users" alter column "foo" drop default');
+    expect(tableSql[1].sql).to.equal('alter table "users" alter column "foo" drop not null');
+    expect(tableSql[2].sql).to.equal('alter table "users" alter column "foo" type varchar(255) using ("foo"::varchar(255))');
+    expect(tableSql[3].sql).to.equal('alter table "users" alter column "foo" set default \'foo\'');
+    expect(tableSql[4].sql).to.equal('alter table "users" alter column "foo" set not null');
+    expect(tableSql[5].sql).to.equal('alter table "users" alter column "bar" drop default');
+    expect(tableSql[6].sql).to.equal('alter table "users" alter column "bar" drop not null');
+    expect(tableSql[7].sql).to.equal('alter table "users" alter column "bar" type integer using ("bar"::integer)');
+  });
+
   it("alter table with schema", function() {
     tableSql = client.schemaBuilder().withSchema('myschema').table('users', function(table) {
       table.increments('id');
@@ -174,10 +191,35 @@ describe("PostgreSQL SchemaBuilder", function() {
   });
 
   it("adding foreign key", function() {
-    tableSql = client.schemaBuilder().createTable('accounts', function(table) {
-      table.integer('account_id').references('users.id');
+    tableSql = client.schemaBuilder().table('users', function() {
+      this.foreign('foo_id').references('id').on('orders');
     }).toSQL();
-    expect(tableSql[1].sql).to.equal('alter table "accounts" add constraint "accounts_account_id_foreign" foreign key ("account_id") references "users" ("id")');
+    equal(1, tableSql.length);
+    expect(tableSql[0].sql).to.equal('alter table "users" add constraint "users_foo_id_foreign" foreign key ("foo_id") references "orders" ("id")');
+
+    tableSql = client.schemaBuilder().table('users', function() {
+      this.integer('foo_id').references('id').on('orders');
+    }).toSQL();
+    equal(2, tableSql.length);
+    expect(tableSql[0].sql).to.equal('alter table "users" add column "foo_id" integer');
+    expect(tableSql[1].sql).to.equal('alter table "users" add constraint "users_foo_id_foreign" foreign key ("foo_id") references "orders" ("id")');
+  });
+
+  it('adding foreign key with specific identifier', function() {
+    tableSql = client.schemaBuilder().table('users', function() {
+      this.foreign('foo_id', 'fk_foo').references('id').on('orders');
+    }).toSQL();
+
+    equal(1, tableSql.length);
+    expect(tableSql[0].sql).to.equal('alter table "users" add constraint "fk_foo" foreign key ("foo_id") references "orders" ("id")');
+
+    tableSql = client.schemaBuilder().table('users', function() {
+      this.integer('foo_id').references('id').on('orders').withKeyName('fk_foo');
+    }).toSQL();
+
+    equal(2, tableSql.length);
+    expect(tableSql[0].sql).to.equal('alter table "users" add column "foo_id" integer');
+    expect(tableSql[1].sql).to.equal('alter table "users" add constraint "fk_foo" foreign key ("foo_id") references "orders" ("id")');
   });
 
   it("adds foreign key with onUpdate and onDelete", function() {
